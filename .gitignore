@@ -2,6 +2,7 @@
 out/
 .idea/
 *.iml
+data/profiles
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
