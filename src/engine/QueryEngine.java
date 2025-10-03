@@ -54,7 +54,7 @@ public class QueryEngine {
             }
         }
         
-        System.err.println("Loaded " + loadedCount + " profiles.");
+        System.out.println("Loaded " + loadedCount + " profiles.");
     }
     
     private void classifyUser(UserProfile profile) {
