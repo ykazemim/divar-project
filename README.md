@@ -62,6 +62,7 @@ java -cp out Main /path/to/profiles
 - `FIND <category>` - Find all users in a category
   - Built-in categories: `fraudsters`, `businesses`, `real_estate_agents`, `new_users`
   - Custom tags: any tag you've added via `ADD_TAG`
+  - Shows count, percentage, and complete user list
 
 - `GET_USER_PROFILE <userId>` - Display full profile for a user
   - Example: `GET_USER_PROFILE user_756`
@@ -91,12 +92,14 @@ java -cp out Main /path/to/profiles
 > FIND fraudsters
 
 ┌─ FIND: fraudsters
-├─ Results: 165 user(s)
 └─
    • user_710
    • user_756
    • user_723
    ...
+
+├─ Results: 165 user(s) out of 800
+└─ Percentage: 20.63%
 ⏱  Query executed in 0.002 seconds
 ─────────────────────────────────────────────────────────────
 
