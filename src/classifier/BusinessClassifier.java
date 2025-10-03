@@ -12,7 +12,6 @@ public class BusinessClassifier implements Classifier {
         "BUSINESS_[0-9]+",
         "آژانس",
         "بنگاه",
-        "فروشگاه",
         "شرکت"
     };
     
@@ -50,10 +49,13 @@ public class BusinessClassifier implements Classifier {
     };
     
     private static final Pattern HIGH_POST_COUNT = Pattern.compile("supply_total_posts[\"']?:\\s*([5-9]|[1-9][0-9]+)");
+    private static final Pattern VERY_HIGH_POST_COUNT = Pattern.compile("supply_total_posts[\"']?:\\s*(1[0-9]|[2-9][0-9]|[1-9][0-9]{2,})");
     private static final Pattern HIGH_REVENUE = Pattern.compile("supply_total_revenue[\"']?:\\s*([1-9][0-9]{6,})");
+    private static final Pattern VERY_HIGH_REVENUE = Pattern.compile("supply_total_revenue[\"']?:\\s*([5-9][0-9]{6,}|[1-9][0-9]{7,})");
     private static final Pattern HIGH_VIEWS = Pattern.compile("supply_total_views[\"']?:\\s*([5-9][0-9]{2,}|[1-9][0-9]{3,})");
-    private static final Pattern MULTIPLE_CATEGORIES = Pattern.compile("supply_unique_categories[\"']?:\\s*([2-9]|[1-9][0-9]+)");
+    private static final Pattern MULTIPLE_CATEGORIES = Pattern.compile("supply_unique_categories[\"']?:\\s*([3-9]|[1-9][0-9]+)");
     private static final Pattern HIGH_DEMAND_SEARCHES = Pattern.compile("demand_searches_made[\"']?:\\s*([1-9][0-9]{2,})");
+    private static final Pattern VERY_HIGH_DEMAND_SEARCHES = Pattern.compile("demand_searches_made[\"']?:\\s*([2-9][0-9]{2,}|[1-9][0-9]{3,})");
     
     @Override
     public boolean matches(UserProfile profile) {
@@ -62,7 +64,7 @@ public class BusinessClassifier implements Classifier {
         
         for (String keyword : BUSINESS_IDENTITY_KEYWORDS) {
             if (content.matches("(?s).*" + keyword + ".*")) {
-                businessScore += 4;
+                businessScore += 5;
                 break;
             }
         }
@@ -73,15 +75,15 @@ public class BusinessClassifier implements Classifier {
                 serviceKeywordCount++;
             }
         }
-        if (serviceKeywordCount >= 2) {
-            businessScore += 3;
-        } else if (serviceKeywordCount == 1) {
-            businessScore += 1;
+        if (serviceKeywordCount >= 3) {
+            businessScore += 4;
+        } else if (serviceKeywordCount >= 2) {
+            businessScore += 2;
         }
         
         for (String keyword : INTERMEDIARY_KEYWORDS) {
             if (content.matches("(?s).*" + keyword + ".*")) {
-                businessScore += 2;
+                businessScore += 3;
                 break;
             }
         }
@@ -92,22 +94,34 @@ public class BusinessClassifier implements Classifier {
                 behaviorCount++;
             }
         }
-        if (behaviorCount >= 2) {
-            businessScore += 2;
+        if (behaviorCount >= 3) {
+            businessScore += 3;
+        } else if (behaviorCount >= 2) {
+            businessScore += 1;
         }
         
-        Matcher postMatcher = HIGH_POST_COUNT.matcher(content);
+        Matcher postMatcher = VERY_HIGH_POST_COUNT.matcher(content);
         if (postMatcher.find()) {
             int posts = Integer.parseInt(postMatcher.group(1));
-            if (posts >= 10) {
-                businessScore += 4;
-            } else if (posts >= 5) {
-                businessScore += 2;
+            if (posts >= 20) {
+                businessScore += 5;
+            } else if (posts >= 10) {
+                businessScore += 3;
+            }
+        } else {
+            postMatcher = HIGH_POST_COUNT.matcher(content);
+            if (postMatcher.find()) {
+                int posts = Integer.parseInt(postMatcher.group(1));
+                if (posts >= 7) {
+                    businessScore += 2;
+                }
             }
         }
         
-        if (HIGH_REVENUE.matcher(content).find()) {
-            businessScore += 3;
+        if (VERY_HIGH_REVENUE.matcher(content).find()) {
+            businessScore += 4;
+        } else if (HIGH_REVENUE.matcher(content).find()) {
+            businessScore += 2;
         }
         
         if (HIGH_VIEWS.matcher(content).find()) {
@@ -118,15 +132,17 @@ public class BusinessClassifier implements Classifier {
             businessScore += 2;
         }
         
-        Matcher demandMatcher = HIGH_DEMAND_SEARCHES.matcher(content);
+        Matcher demandMatcher = VERY_HIGH_DEMAND_SEARCHES.matcher(content);
         if (demandMatcher.find()) {
             int searches = Integer.parseInt(demandMatcher.group(1));
-            if (searches >= 100) {
-                businessScore += 2;
+            if (searches >= 200) {
+                businessScore += 3;
+            } else {
+                businessScore += 1;
             }
         }
         
-        return businessScore >= 5;
+        return businessScore >= 8;
     }
     
     @Override
