@@ -33,7 +33,7 @@ public class QueryEngine {
         classifiers.add(new RealEstateClassifier());
     }
     
-    public void loadProfiles(String dataDirectory) throws IOException {
+    public int loadProfiles(String dataDirectory) throws IOException {
         Path dirPath = Paths.get(dataDirectory);
         
         if (!Files.exists(dirPath) || !Files.isDirectory(dirPath)) {
@@ -49,12 +49,12 @@ public class QueryEngine {
                     dataStore.addUser(profile);
                     loadedCount++;
                 } catch (Exception e) {
-                    System.err.println("Error parsing " + filePath + ": " + e.getMessage());
+                    System.err.println("   ⚠ Warning: Error parsing " + filePath.getFileName() + ": " + e.getMessage());
                 }
             }
         }
         
-        System.out.println("Loaded " + loadedCount + " profiles.");
+        return loadedCount;
     }
     
     private void classifyUser(UserProfile profile) {
