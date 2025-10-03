@@ -21,10 +21,12 @@ public class Main {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             String line;
 
-            System.out.println("Enter your command: ");
+            System.out.println("--------------------");
+            System.out.print("Enter your command: ");
             while ((line = reader.readLine()) != null) {
                 CommandParser.ParsedCommand command = parser.parse(line);
                 executor.execute(command);
+                System.out.println("--------------------");
                 System.out.print("Enter your command: ");
             }
 
