@@ -1,0 +1,223 @@
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         DIVAR QUERY ENGINE ARCHITECTURE                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                          PRESENTATION LAYER                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────┐
+│      Main           │
+├─────────────────────┤
+│ - DEFAULT_DATA_DIR  │
+│ - BANNER            │
+├─────────────────────┤
+│ + main(String[])    │
+└──────┬──────────────┘
+       │ creates
+       ├────────────────────┐
+       ↓                    ↓
+┌──────────────────┐   ┌─────────────────────┐
+│ CommandParser    │   │  QueryExecutor      │
+├──────────────────┤   ├─────────────────────┤
+│                  │   │ - engine: QEngine   │
+├──────────────────┤   │ - SEPARATOR         │
+│ + parse(String)  │   ├─────────────────────┤
+│   returns:       │   │ + execute(Command)  │
+│   ParsedCommand  │   │ - handleFind()      │
+└──────────────────┘   │ - handleAddTag()    │
+       │               │ - handleRemoveTag() │
+       │ creates       │ - handleGetUser()   │
+       ↓               └──────────┬──────────┘
+┌──────────────────┐              │
+│ ParsedCommand    │              │ uses
+├──────────────────┤              ↓
+│ - type: CmdType  │       ┌──────────────┐
+│ - args: String[] │       │   Config     │
+├──────────────────┤       ├──────────────┤
+│ + getType()      │       │ - showTime   │
+│ + getArguments() │       ├──────────────┤
+└──────────────────┘       │ + isShow()   │
+                           │ + toggle()   │
+                           └──────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                LOGIC LAYER                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+                        ┌───────────────────────────────┐
+                        │      QueryEngine              │
+                        ├───────────────────────────────┤
+                        │ - dataStore: DataStore        │
+                        │ - parser: ProfileParser       │
+                        │ - classifiers: List<Clf>      │
+                        ├───────────────────────────────┤
+                        │ + loadProfiles(path): int     │
+                        │ + findByCategory(cat): Set    │
+                        │ + findByTag(tag): Set         │
+                        │ + getUserProfile(id): String  │
+                        │ + addTag(id, tag): boolean    │
+                        │ + removeTag(id, tag): boolean │
+                        │ + getTotalUsers(): int        │
+                        │ - initializeClassifiers()     │
+                        │ - classifyUser(profile)       │
+                        └──────┬────────────────────────┘
+                               │ uses
+              ┌────────────────┼────────────────┐
+              ↓                ↓                ↓
+        ┌──────────┐     ┌──────────┐    ┌─────────────┐
+        │DataStore │     │  Parser  │    │ Classifiers │
+        └──────────┘     └──────────┘    └─────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────┐
+│                  «interface» Classifier                            │
+├────────────────────────────────────────────────────────────────────┤
+│ + matches(UserProfile): boolean                                    │
+│ + getCategoryName(): String                                        │
+└────────────────────────────────────────────────────────────────────┘
+                            △
+        ┌───────────────────┼───────────────────┬──────────────┐
+        │                   │                   │              │
+        │                   │                   │              │
+┌───────┴────────┐  ┌───────┴────────┐  ┌──────┴──────┐  ┌──┴──────────┐
+│ FraudClassifier│  │BusinessClassif.│  │RealEstateCl.│  │NewUserCl.   │
+├────────────────┤  ├────────────────┤  ├─────────────┤  ├─────────────┤
+│ Keywords: 50+  │  │ Threshold: 8   │  │ Threshold:6 │  │ Very strict │
+│ Threshold: 5   │  │ Post count: 7+ │  │ Must be biz │  │ No activity │
+├────────────────┤  ├────────────────┤  ├─────────────┤  ├─────────────┤
+│ + matches()    │  │ + matches()    │  │ + matches() │  │ + matches() │
+│ Returns:       │  │ Returns:       │  │ Returns:    │  │ Returns:    │
+│ "fraudsters"   │  │ "businesses"   │  │ "real_est.."│  │ "new_users" │
+└────────────────┘  └────────────────┘  └─────────────┘  └─────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                         DATA ACCESS LAYER                                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────┐      ┌──────────────────────────────┐
+│         DataStore               │      │     ProfileParser            │
+├─────────────────────────────────┤      ├──────────────────────────────┤
+│ INDEXES:                        │      │ - UUID_PATTERN               │
+│ • userIndex: Map<id, Profile>   │      │ - USER_ID_PATTERN            │
+│ • categoryIndex: Map<cat, Set>  │      ├──────────────────────────────┤
+│ • tagIndex: Map<tag, Set>       │      │ + parse(Path): UserProfile   │
+├─────────────────────────────────┤      │ - extractUserId(name)        │
+│ + addUser(profile)              │      │ - extractUuid(content)       │
+│ + getUser(id): Profile          │      └──────────┬───────────────────┘
+│ + getUsersByCategory(): Set     │                 │ creates
+│ + getUsersByTag(): Set          │                 ↓
+│ + addTagToUser(): boolean       │      ┌──────────────────────────────┐
+│ + removeTagToUser(): boolean    │      │      UserProfile             │
+└───────────────┬─────────────────┘      ├──────────────────────────────┤
+                │ stores                 │ - userId: String (final)     │
+                └───────────────────────→│ - uuid: String (final)       │
+                                         │ - rawContent: String (final) │
+    Example Storage:                     │ - categories: Set<String>    │
+    ┌──────────────────────┐             │ - tags: Set<String>          │
+    │ userIndex:           │             ├──────────────────────────────┤
+    │  "user_756" → {      │             │ + getUserId(): String        │
+    │    userId: "user_756"│             │ + getRawContent(): String    │
+    │    categories: [     │             │ + addCategory(String)        │
+    │      "fraudsters"    │             │ + addTag(String)             │
+    │    ]                 │             │ + removeTag(String)          │
+    │  }                   │             │ + hasCategory(cat): boolean  │
+    ├──────────────────────┤             │ + hasTag(tag): boolean       │
+    │ categoryIndex:       │             └──────────────────────────────┘
+    │  "fraudsters" → [    │
+    │    "user_756",       │
+    │    "user_723",       │
+    │    ...               │             Design Choice:
+    │  ]                   │             ──────────────
+    ├──────────────────────┤             Immutable core (id, content)
+    │ tagIndex:            │             Mutable extensions (tags)
+    │  "vip" → [           │             → Safe + Flexible
+    │    "user_200"        │
+    │  ]                   │
+    └──────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                           DATA FLOW DIAGRAM                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+STARTUP FLOW:
+═════════════
+  [800 MD Files] 
+       ↓
+  ProfileParser.parse()
+       ↓
+  [UserProfile Objects]
+       ↓
+  For each classifier: matches(profile)
+       ↓
+  UserProfile.addCategory("fraudsters")
+       ↓
+  DataStore.addUser(profile)
+       ↓
+  [3 Indexes Updated]
+       ↓
+  Ready for Queries (3.6s)
+
+
+QUERY FLOW (FIND):
+══════════════════
+  "FIND fraudsters"
+       ↓
+  CommandParser.parse()
+       ↓
+  {type: FIND, args: ["fraudsters"]}
+       ↓
+  QueryExecutor.execute()
+       ↓
+  QueryEngine.findByCategory("fraudsters")
+       ↓
+  DataStore.getUsersByCategory("fraudsters")
+       ↓
+  categoryIndex.get("fraudsters") → Set<userId>
+       ↓
+  [165 userIds returned] (O(1))
+       ↓
+  Format & Display with percentage
+
+
+TAG MANAGEMENT FLOW:
+════════════════════
+  "ADD_TAG user_756 vip"
+       ↓
+  CommandParser.parse()
+       ↓
+  {type: ADD_TAG, args: ["user_756", "vip"]}
+       ↓
+  DataStore.addTagToUser("user_756", "vip")
+       ↓
+  1. userIndex.get("user_756") → UserProfile
+  2. profile.addTag("vip")
+  3. tagIndex["vip"].add("user_756")
+       ↓
+  [Both UserProfile AND tagIndex updated]
+       ↓
+  Success response
+
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    COMPONENT RESPONSIBILITIES                               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────┬────────────────────────────────────────────────────────┐
+│ Component        │ Single Responsibility                                  │
+├──────────────────┼────────────────────────────────────────────────────────┤
+│ Main             │ Application bootstrap & stdin/stdout loop              │
+│ CommandParser    │ Parse text commands into structured objects            │
+│ QueryExecutor    │ Format and display query results                       │
+│ QueryEngine      │ Orchestrate data loading and query execution           │
+│ DataStore        │ Manage in-memory storage with multi-index             │
+│ ProfileParser    │ Extract data from markdown files                       │
+│ UserProfile      │ Represent user entity with properties                  │
+│ Classifiers      │ Determine user categories based on content/metrics     │
+│ Config           │ Manage global application settings                     │
+└──────────────────┴────────────────────────────────────────────────────────┘
